@@ -1,20 +1,100 @@
 # Bigforest
-Bigforest是一个分布式节点路由管理器，
+Bigforest是一个分布式节点路由管理器，可随时添加扩展节点信息
 主要应用
 1、mysql负载均衡，水平/垂直集群管理，跨部门节点管理
 2、跨部门集群分布式节点路由，比如：在处理订单信息时，往往会出现跨多个节点的sql操作，
    Bigforest可以根据订单信息直接生成对应节点的sql语句、对应节点的数据库信息，
    结果返回多个元组元素的列表，用户只需实现map功能就可执行分布式事务
+3、Bigforest管理器是根据水平/垂直分割逻辑来定义的，所以在使用Bigforest时，需要设计好自己的水平分割逻辑与垂直分割逻辑
 ## 功能介绍
-- 1、数据库数据水平分表 
-本管理器根据水平分表需求的思路进行设计，所以在使用本管理器时，需先设定表的最大行数
+- 1、Bigforest_server有4个参数，分别为ip,port,listen_num,Level，通讯方式为TCP
+     参数说明：ip为服务地址，port为自定义端口号，listen_num为连接数，Lever为水平分表设置的最大范围值
+     
+         from Bigforest.Bigforest_server import Bigforest_server
+         ip = '127.0.0.1'
+         port = 1234
+         listen_num = 5
+         Level=20
+         Bigforest_server(ip, port, listen_num,Level) #运行直接启动服务
 
-      import gorun
-      #RowMax是设置每个表的最大行数
-      '''当然根据自己数据库的表的原思路来定义这个数值'''
-      t=gorun(RowMax=20)
- 
-- 2、动态节点扩展 动态添加节点不用重新修改配置，整个节点管理器分为两层：
+- 2、Bigforest_client目前有7个可用模块
+- - -1) add_super_node:添加跨服务集群管理器
+        add_master：添加主节点信息
+        add_split：添加垂直节点信息
+        add_slave：添加从节点信息
+        bing：绑定当前节点信息
+        put_dict：订单队列，用于添加订单信息 
+                  数据结构为:{'用户uid':{'uid':14},'事件':'支付','商品id':{'spid':3},'数量':4,'价格':10,'事件对象uid':{'uid':12}}
+        get_sql：根据订单信息匹配对应mysql信息与生成sql语句，返回列表，列表元素结构为：(sql语句,(dbname,ip:port,admin))
+        
+- - - 2)Bigforest_client初始化有2个参数,分别是绑定服务器的ip,port
+
+         from Bigforest.Bigforest_client import Bigforest_client
+         ip = '127.0.0.1'
+         port = 1234
+         Bf=Bigforest_client(ip, port)
+
+- - - 3)添加集群管理器add_super_node，有1个参数：Cluster_name（集群名称），在添加服务节点时，需要先注册集群管理器，否则无法添加服务节点，
+
+         Bf=Bigforest_client(ip, port)
+         Cluster_name='用户'
+         Cluster_name1='商品'
+         Bf.add_super_node(Cluster_name)
+         Bf.add_super_node(Cluster_name1)
+         ----------------------------------------------------
+         由服务端返回结果：
+         server>> 已处理完成：用户集群管理器添加成功
+         server>> 已处理完成：商品集群管理器添加成功
+         
+- - - 4)各个集群添加主节点add_master，有6个参数，分别是:Cluster_nam,'insert', dbname, Level, ip, admin
+- - - - 1) Cluster_nam：添加主节点时需要传入对应的Cluster_nam，比如上面我们创建了2个集群管理器，一个是用户，一个是商品，如果这次我们添加的主节点是                         属于用户集群的，那么这个Cluster_nam的值就需要定义为'用户'
+- - - - 2) 'insert'：第二个参数需要传入'insert',这个参数可无视但是传参时不能漏掉，写代码的时候乱加的，到时会去掉
+- - - - 3) dbname：传入对应ip的数据库名称
+- - - - 4) Level：传入水平分表设置的最大范围值
+- - - - 5) ip ： 传入对应数据库的ip地址需带上端口号，格式为:'127.0.0.1:3306' 
+- - - - 6) admin ：mysql的账号密码，格式为：{'user': 'root', 'passwd': 'root'}
+
+         Cluster_name='用户'
+         qt='insert'
+         dbname = 'test'
+         Level = 20
+         ip = '127.0.0.1:3306'
+         admin={'user': 'root', 'passwd': 'root'}
+         
+         #打包成元组
+         data=(Cluster_name,qt,dbname,Level,ip,admin)
+         Bf.add_master(data)#注意:参数需要以元组方式传入
+         ----------------------------------------------------
+         由服务端返回结果：
+         server>> 已处理完成：master节点已经添加完成
+
+- - - 5) 添加垂直节点信息add_split,add_split和add_master函数操作一样，有6个参数，分别是:Cluster_nam,'insert', dbname, Level, ip, admin
+- - - - 1) Cluster_nam：添加主节点时需要传入对应的Cluster_nam，比如上面我们创建了2个集群管理器，一个是用户，一个是商品，如果这次我们添加的主节点是                         属于用户集群的，那么这个Cluster_nam的值就需要定义为'用户'
+- - - - 2) 'insert'：第二个参数需要传入'insert',这个参数可无视但是传参时不能漏掉，写代码的时候乱加的，到时会去掉
+- - - - 3) dbname：传入对应ip的数据库名称
+- - - - 4) Level：传入水平分表设置的最大范围值
+- - - - 5) ip ： 传入对应数据库的ip地址需带上端口号，格式为:'127.0.0.1:3306' 
+- - - - 6) admin ：mysql的账号密码，格式为：{'user': 'root', 'passwd': 'root'}
+- - - - 7) 注意：如果没有添加主节点的情况下，添加垂直节点是不成功的，系统会红字提示：先添加主节点再添加垂直节点
+         Cluster_name='用户'
+         qt='insert'
+         dbname = 'test'
+         Level = 20
+         ip = '127.0.0.1:3306'
+         admin={'user': 'root', 'passwd': 'root'}
+         
+         #打包成元组
+         data=(Cluster_name,qt,dbname,Level,ip,admin)
+         Bf.add_split(data)#注意:参数需要以元组方式传入
+         ----------------------------------------------------
+         由服务端返回结果：
+         server>> 已处理完成：垂直节点已添加完成
+
+- - - 6) 添加垂直节点信息add_split
+
+
+
+、动态节点扩展 动态添加节点不用重新修改配置，整个节点管理器分为两层：
 - - - 1)、'insert'层：主要来管理所有节点，每个节点列表的第一个ip为主节点，后面的为从节点
 - - - 2)、'select'层：负载均衡管理器，在匹配范围sql语句对应的server_ip时,
                      会根据这层的结果中匹配出server_ip因为考虑到节点之间负载均衡的问题，所以添加主节点时，会自动添加到负载均衡管理器中
