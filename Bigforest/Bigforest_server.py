@@ -7,8 +7,8 @@ import threading
 import pickle
 
 class Bigforest_server:
-    def __init__(self,ip,port,listen_num):
-        self.__t = gorun(20)
+    def __init__(self,ip,port,listen_num,Level):
+        self.__t = gorun(Level)
         self.__runfunc = {
             '1': self.__t.Add_master_node,
             '2': self.__t.Add_split_node,
@@ -68,4 +68,4 @@ if __name__ == '__main__':
     ip='127.0.0.1'
     port=1234
     listen_num=5
-    Bigforest_server(ip,port,listen_num)
+    Bigforest_server(ip,port,listen_num,20)
