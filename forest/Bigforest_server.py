@@ -44,7 +44,7 @@ class Bigforest_server:
                 break
             else:
                 re_data=pickle.loads(re_data)
-                print(re_data)
+                
                 if re_data[1]==' ':
                     data=self.__runfunc[re_data[0]]()
                     message = f"已处理完成：{data}"
@@ -53,7 +53,7 @@ class Bigforest_server:
                     data=self.__runfunc[re_data[0]](re_data[1])
                     message = f"已处理完成：{data}"
                     self.send_message(pickle.dumps(message), conn)
-                print(self.__t.prin())
+                
 
 
     def send_message(self,message,conn):
