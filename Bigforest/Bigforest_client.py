@@ -33,7 +33,7 @@ class Bigforest_client:
         re_data = self.client.recv(1024)
         re_data=pickle.loads(re_data)
         print("server>>", re_data)
-    def bing(self,data,):
+    def bind(self,data,):
         message = ('5', data)
         self.client.send(pickle.dumps(message))
         re_data = self.client.recv(1024)
