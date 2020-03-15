@@ -17,7 +17,6 @@ class Bigforest_server:
             '5': self.__t.bing_table,
             '6': self.__t.put_dict,
             '7': self.__t.get_sql,
-            '8': self.__t.prin,
         }
 
         self.address = (ip, int(port))  # 服务端地址和端口
